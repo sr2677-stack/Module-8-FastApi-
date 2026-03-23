@@ -17,10 +17,28 @@ jobs:
       with:
         python-version: 3.11
 
-    - name: Install dependencies
+    - name: Detect project directory
+      id: project
+      shell: bash
       run: |
-        pip install -r requirements.txt
+        if [ -f "requirements.txt" ] && [ -d "app" ] && [ -d "tests" ]; then
+          echo "dir=." >> "$GITHUB_OUTPUT"
+        elif [ -f "fastapi-calculator/requirements.txt" ] && [ -d "fastapi-calculator/app" ] && [ -d "fastapi-calculator/tests" ]; then
+          echo "dir=fastapi-calculator" >> "$GITHUB_OUTPUT"
+        else
+          echo "Could not find project directory containing requirements.txt, app/, and tests/"
+          exit 1
+        fi
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install -r "${{ steps.project.outputs.dir }}/requirements.txt"
 
     - name: Run tests
+      shell: bash
+      env:
+        PYTHONPATH: ${{ github.workspace }}/${{ steps.project.outputs.dir }}
       run: |
-        pytest
+        python -m pytest -p no:playwright "${{ steps.project.outputs.dir }}/tests"
